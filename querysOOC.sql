@@ -100,6 +100,81 @@ CREATE TABLE matricula (
     CONSTRAINT fk_matricula_pago FOREIGN KEY (id_pago) REFERENCES pago(id_pago)  -- Nombre de la FK
 );
 
+-- Tabla EstructuraExamen
+CREATE TABLE estructura_examen (
+    Id_Estructura Number(3),
+    Tipo_Examen Varchar(20),
+    Cantidad_Preguntas Number(3), -- CANTIDAD DE ESTE EXAMEN
+    Puntaje Number(5, 2),
+    Duracion Number(3), -- Duración en minutos
+    Constraint Pk_Estructura Primary Key (Id_Estructura),
+    CONSTRAINT CK_EXAMEN_TIPO CHECK (tipo_Examen IN ('prueba', 'examen final', 'entrada'))
+);
+
+-- Tabla Examen
+CREATE TABLE Examen (
+    Id_Examen Number(3),
+    Id_Estructura Number(3),
+    Fecha_Examen Date DEFAULT Sysdate,
+    CONSTRAINT FK_EXAMEN_ESTRUCTURA FOREIGN KEY (Id_Estructura) REFERENCES estructura_examen(Id_Estructura),
+    CONSTRAINT PK_EXAMEN PRIMARY KEY (Id_Examen)
+);
+
+-- Tabla Notas
+Create Table Notas (
+    Id_Nota Number(3),
+    Id_Examen Number(3),
+    id_estudiante number(3),
+    Nota_Sacada Number(5, 2),
+    Fecha_Completado Date Default Sysdate,
+    CONSTRAINT PK_NOTAS PRIMARY KEY (ID_NOTA), 
+    Constraint Fk_Notas_Examen Foreign Key (Id_Examen) References Examen(Id_Examen),
+    CONSTRAINT FK_NOTAS_ESTUDIANTE FOREIGN KEY (id_estudiante) REFERENCES estudiante(Id_ESTUDIANTE),
+    CONSTRAINT CK_NOTAS_PUNTAJE CHECK (nota_sacada BETWEEN 0 AND 20)
+);
+
+-- Tabla Retroalimentacion
+Create Table Retroalimentacion (
+    Id_Retroalimentacion Number(3),
+    Id_Nota Number(3),
+    Respuesta_Estudiante VARCHAR2(4000),
+    correcta NUMBER(1),
+    fundamento VARCHAR2(4000),
+    Sugerencia Varchar2(4000),
+    Constraint Pk_Retroalimentacion Primary Key (Id_Retroalimentacion),
+    Constraint Fk_Retroalimentacion_Resultado Foreign Key (Id_Nota) References Notas(Id_Nota),
+    CONSTRAINT CK_RETROALI_CORRECTA CHECK (correcta IN (0, 1))
+);
+
+-- Tabla Nivel
+Create Table Nivel (
+    id_Nivel NUMBER(3),
+    Nombre Varchar2(20),
+    CONSTRAINT PK_NIVEL PRIMARY KEY (ID_NIVEL),
+    CONSTRAINT CK_NIVEL_NOMBRE CHECK (nombre IN ('facil', 'medio', 'dificil'))
+);
+
+-- Tabla BancoPregunta
+Create Table Banco_Pregunta (
+    Id_Bancopregunta Number(3) ,
+    id_Nivel NUMBER(3),
+    contenido VARCHAR2(4000),  -- Pregunta del examen
+    Claves Varchar2(4000),  -- Claves de la pregunta (si es necesario para elegir múltiples opciones)
+    Respuesta_Correcta Varchar2(4000),
+    Constraint Pk_Banco_Pregunta Primary Key (Id_Bancopregunta),
+    CONSTRAINT FK_BANCO_PREGUNTA_NIVEL FOREIGN KEY (id_Nivel) REFERENCES Nivel(id_Nivel)
+);
+
+-- Tabla ExamenBancoPregunta
+Create Table ExamenBancopregunta (
+    Id_Examen Number(3),
+    Id_Bancopregunta Number(3),
+    Constraint Fk_Examenbancopregunta_Examen Foreign Key (Id_Examen) References Examen(Id_Examen),
+    Constraint Fk_ExamenBancoPregunta_Banco Foreign Key (Id_Bancopregunta) References Banco_pregunta(Id_Bancopregunta),
+    CONSTRAINT PK_EXAMENBANCOPREGUNTA PRIMARY KEY (id_Examen, id_BancoPregunta)
+);
+
+
 --dejado para el  final
 -- Tabla InformeCurso
 CREATE TABLE informe_curso (
@@ -110,75 +185,7 @@ CREATE TABLE informe_curso (
     total_estudiantes NUMBER(5) CHECK (total_estudiantes >= 0),
     porcentaje_aprobados NUMBER(5, 2) CHECK (porcentaje_aprobados BETWEEN 0 AND 100),
     CONSTRAINT pk_informe_curso PRIMARY KEY (id_informe),  -- Nombre de la PK
-    CONSTRAINT fk_informe_curso FOREIGN KEY (id_curso) REFERENCES curso(id_curso)  -- Nombre de la FK
-);
-
-/* OBAVVIARLO POR Ahora
--- Tabla OpcionesSatisfaccion
-CREATE TABLE opciones_satisfaccion (
-    id_satisfaccion NUMBER(1),  -- Definición de la columna
-    nombre VARCHAR2(20) CHECK (nombre IN ('deficiente', 'bajo', 'regular', 'bueno')),
-    CONSTRAINT pk_opciones_satisfaccion PRIMARY KEY (id_satisfaccion)  -- Nombre de la PK
-);
-
--- Tabla MetricasDesempeño
-CREATE TABLE metricas_desempeno (
-    id_metrica NUMBER(3),  -- Definición de la columna
-    id_profesor NUMBER(3) NOT NULL,
-    id_estudiante NUMBER(3) NOT NULL,
-    id_opc_satis NUMBER(1) NOT NULL,
-    fecha_evaluacion DATE DEFAULT SYSDATE,
-    comentario VARCHAR2(255),
-    CONSTRAINT pk_metricas_desempeno PRIMARY KEY (id_metrica),  -- Nombre de la PK
-    CONSTRAINT fk_metricas_profesor FOREIGN KEY (id_profesor) REFERENCES profesor(id_profesor),  -- Nombre de la FK
-    CONSTRAINT fk_metricas_estudiante FOREIGN KEY (id_estudiante) REFERENCES estudiante(id_estudiante),  -- Nombre de la FK
-    CONSTRAINT fk_metricas_opc_satis FOREIGN KEY (id_opc_satis) REFERENCES opciones_satisfaccion(id_satisfaccion)  -- Nombre de la FK
-);
-*/
-Create Table Estructuraexamen (
-    Idestructura Number(3) Primary Key,
-    tipo_examen VARCHAR(20),
-    cantidadPreguntas NUMBER(3),
-    puntaje NUMBER(5, 2),
-    duracion NUMBER(3) -- Duración en minutos
-);
-
-CREATE TABLE Examen (
-    idExamen NUMBER(3) PRIMARY KEY,
-    idEstructura NUMBER(3) REFERENCES EstructuraExamen(idEstructura),
-    idEstudiante NUMBER(3) REFERENCES estudiante(idEstudiante),
-    fechaExamen DATE DEFAULT SYSDATE,
-    tipoExamen VARCHAR2(20) CHECK (tipoExamen IN ('prueba', 'examen final', 'entrada'))
-);
-CREATE TABLE notas (
-    idResultado NUMBER(3) PRIMARY KEY,
-    puntajeSacado NUMBER(5, 2) CHECK (puntajeSacado BETWEEN 0 AND 20),
-    fechaCompletado DATE DEFAULT SYSDATE,
-    idExamen NUMBER(3) REFERENCES Examen(idExamen)
-);
-CREATE TABLE Retroalimentacion (
-    idRetroalimentacion NUMBER(3) PRIMARY KEY,
-    idResultado NUMBER(3) REFERENCES ResultadoExamen(idResultado),
-    RespuestaEstudiante VARCHAR2(4000),
-    correcta NUMBER(1) CHECK (correcta IN (0, 1)), -- 1 = correcta, 0 = incorrecta
-    fundamento VARCHAR2(4000),
-    sugerencia VARCHAR2(4000)
-);
-CREATE TABLE Nivel (
-    idNivel NUMBER(3) PRIMARY KEY,
-    nombre VARCHAR2(20) CHECK (nombre IN ('facil', 'medio', 'dificil'))
-);
-CREATE TABLE BancoPregunta (
-    idBancoPregunta NUMBER(3) PRIMARY KEY,
-    idNivel NUMBER(3) REFERENCES Nivel(idNivel),
-    contenido VARCHAR2(4000),  -- Pregunta del examen
-    claves VARCHAR2(4000),  -- Claves de la pregunta (si es necesario para elegir múltiples opciones)
-    respuestaCorrecta VARCHAR2(4000)
-);
-CREATE TABLE ExamenBancoPregunta (
-    idExamen NUMBER(3) REFERENCES Examen(idExamen),
-    idBancoPregunta NUMBER(3) REFERENCES BancoPregunta(idBancoPregunta),
-    PRIMARY KEY (idExamen, idBancoPregunta)
+    Constraint Fk_Informe_Curso Foreign Key (Id_Curso) References Curso(Id_Curso)  -- Nombre de la FK
 );
 
 
@@ -219,13 +226,13 @@ FROM curso c
 GROUP BY c.id_curso, c.nombre, c.estado;
 
 
-CREATE VIEW VistaNotas AS
-SELECT e.idEstudiante,
-       ex.idCurso,
-       re.puntajeSacado AS nota
-FROM Examen ex
-JOIN ResultadoExamen re ON ex.idExamen = re.idExamen
-JOIN estudiante e ON ex.idEstudiante = e.idEstudiante
+Create View Vistanotas As
+Select E.Id_Estudiante,
+       Ex.Id_Curso,
+       n.nota_Sacada AS nota
+From Examen Ex
+JOIN Nota n ON ex.Id_Estudiante = n.Id_Estudiante
+JOIN estudiante e ON ex.Id_Estudiante = e.Id_Estudiante
 Where E.Estado = 1;  -- Solo estudiantes activos
 
 
@@ -375,6 +382,4 @@ SELECT * FROM v_cursos_matriculados;
 
 /* POR EVALUAR*/
 -- Tabla Nota
-hola
-
 
