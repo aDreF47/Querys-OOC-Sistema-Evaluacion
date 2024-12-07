@@ -288,6 +288,6 @@ SELECT * FROM v_cursos_matriculados;
 
 /* POR EVALUAR*/
 -- Tabla Nota
-
+hola
 
 
