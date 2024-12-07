@@ -16,10 +16,10 @@ DROP TABLE estudiante CASCADE CONSTRAINTS;
 DROP TABLE horario CASCADE CONSTRAINTS;
 DROP TABLE curso CASCADE CONSTRAINTS;
 DROP TABLE modulo CASCADE CONSTRAINTS;
-DROP TABLE profesor CASCADE CONSTRAINTS;
-DROP TABLE informeCurso CASCADE CONSTRAINTS;
-DROP TABLE opcionesSatisfaccion CASCADE CONSTRAINTS;
-DROP TABLE metricasDesempeño CASCADE CONSTRAINTS;
+Drop Table Profesor Cascade Constraints;
+Drop Table Informe_curso Cascade Constraints;
+Drop Table Opciones_Satisfaccion Cascade Constraints;
+DROP TABLE metricas_desempeno CASCADE CONSTRAINTS;
 
 -- Tabla Modulo
 CREATE TABLE modulo (
@@ -44,11 +44,12 @@ CREATE TABLE curso (
 CREATE TABLE profesor (
     id_profesor NUMBER(3),  -- Definición de la columna
     nombre VARCHAR2(50) NOT NULL,
-    especializacion VARCHAR2(50) NOT NULL,
-    desempeno NUMBER(3, 1),  -- Calificación de desempeño (1 a 10) con 1 decimal
+    especializacion Varchar2(50) Not Null,
+    --desempeno NUMBER(3, 1),  -- Calificación de desempeño (1 a 10) con 1 decimal
     CONSTRAINT pk_profesor PRIMARY KEY (id_profesor)  -- Nombre de la PK
 );
 
+drop table profesor;
 -- Tabla Horario
 CREATE TABLE horario (
     id_horario NUMBER(3),  -- Definición de la columna
@@ -99,6 +100,7 @@ CREATE TABLE matricula (
     CONSTRAINT fk_matricula_pago FOREIGN KEY (id_pago) REFERENCES pago(id_pago)  -- Nombre de la FK
 );
 
+--dejado para el  final
 -- Tabla InformeCurso
 CREATE TABLE informe_curso (
     id_informe NUMBER(3),  -- Definición de la columna
@@ -111,6 +113,7 @@ CREATE TABLE informe_curso (
     CONSTRAINT fk_informe_curso FOREIGN KEY (id_curso) REFERENCES curso(id_curso)  -- Nombre de la FK
 );
 
+/* OBAVVIARLO POR Ahora
 -- Tabla OpcionesSatisfaccion
 CREATE TABLE opciones_satisfaccion (
     id_satisfaccion NUMBER(1),  -- Definición de la columna
@@ -131,9 +134,55 @@ CREATE TABLE metricas_desempeno (
     CONSTRAINT fk_metricas_estudiante FOREIGN KEY (id_estudiante) REFERENCES estudiante(id_estudiante),  -- Nombre de la FK
     CONSTRAINT fk_metricas_opc_satis FOREIGN KEY (id_opc_satis) REFERENCES opciones_satisfaccion(id_satisfaccion)  -- Nombre de la FK
 );
+*/
+Create Table Estructuraexamen (
+    Idestructura Number(3) Primary Key,
+    tipo_examen VARCHAR(20),
+    cantidadPreguntas NUMBER(3),
+    puntaje NUMBER(5, 2),
+    duracion NUMBER(3) -- Duración en minutos
+);
+
+CREATE TABLE Examen (
+    idExamen NUMBER(3) PRIMARY KEY,
+    idEstructura NUMBER(3) REFERENCES EstructuraExamen(idEstructura),
+    idEstudiante NUMBER(3) REFERENCES estudiante(idEstudiante),
+    fechaExamen DATE DEFAULT SYSDATE,
+    tipoExamen VARCHAR2(20) CHECK (tipoExamen IN ('prueba', 'examen final', 'entrada'))
+);
+CREATE TABLE notas (
+    idResultado NUMBER(3) PRIMARY KEY,
+    puntajeSacado NUMBER(5, 2) CHECK (puntajeSacado BETWEEN 0 AND 20),
+    fechaCompletado DATE DEFAULT SYSDATE,
+    idExamen NUMBER(3) REFERENCES Examen(idExamen)
+);
+CREATE TABLE Retroalimentacion (
+    idRetroalimentacion NUMBER(3) PRIMARY KEY,
+    idResultado NUMBER(3) REFERENCES ResultadoExamen(idResultado),
+    RespuestaEstudiante VARCHAR2(4000),
+    correcta NUMBER(1) CHECK (correcta IN (0, 1)), -- 1 = correcta, 0 = incorrecta
+    fundamento VARCHAR2(4000),
+    sugerencia VARCHAR2(4000)
+);
+CREATE TABLE Nivel (
+    idNivel NUMBER(3) PRIMARY KEY,
+    nombre VARCHAR2(20) CHECK (nombre IN ('facil', 'medio', 'dificil'))
+);
+CREATE TABLE BancoPregunta (
+    idBancoPregunta NUMBER(3) PRIMARY KEY,
+    idNivel NUMBER(3) REFERENCES Nivel(idNivel),
+    contenido VARCHAR2(4000),  -- Pregunta del examen
+    claves VARCHAR2(4000),  -- Claves de la pregunta (si es necesario para elegir múltiples opciones)
+    respuestaCorrecta VARCHAR2(4000)
+);
+CREATE TABLE ExamenBancoPregunta (
+    idExamen NUMBER(3) REFERENCES Examen(idExamen),
+    idBancoPregunta NUMBER(3) REFERENCES BancoPregunta(idBancoPregunta),
+    PRIMARY KEY (idExamen, idBancoPregunta)
+);
 
 
-- Trigger para controlar el número máximo de estudiantes en un curso
+--Trigger para controlar el número máximo de estudiantes en un curso
 CREATE OR REPLACE TRIGGER trg_check_max_estudiantes
 BEFORE INSERT OR UPDATE ON matricula
 FOR EACH ROW
@@ -168,6 +217,44 @@ FROM curso c
   LEFT JOIN matricula m ON c.id_curso = m.id_curso
   LEFT JOIN pago p ON m.id_pago = p.id_pago  -- Unimos Matricula con Pago
 GROUP BY c.id_curso, c.nombre, c.estado;
+
+
+CREATE VIEW VistaNotas AS
+SELECT e.idEstudiante,
+       ex.idCurso,
+       re.puntajeSacado AS nota
+FROM Examen ex
+JOIN ResultadoExamen re ON ex.idExamen = re.idExamen
+JOIN estudiante e ON ex.idEstudiante = e.idEstudiante
+Where E.Estado = 1;  -- Solo estudiantes activos
+
+
+CREATE OR REPLACE PROCEDURE calcular_nota_final (
+    p_idEstudiante IN NUMBER
+) IS
+    v_nota_final NUMBER(5, 2);
+BEGIN
+    -- Calcular la nota promedio de los exámenes realizados
+    SELECT AVG(re.puntajeSacado) INTO v_nota_final
+    FROM Examen ex
+    JOIN ResultadoExamen re ON ex.idExamen = re.idExamen
+    WHERE ex.idEstudiante = p_idEstudiante AND re.puntajeSacado IS NOT NULL;
+
+    -- Actualizar la tabla estudiante con la nota final calculada
+    UPDATE estudiante
+    SET nota = v_nota_final
+    WHERE idEstudiante = p_idEstudiante;
+
+    COMMIT;
+
+    DBMS_OUTPUT.PUT_LINE('Nota final para el estudiante ' || p_idEstudiante || ' calculada exitosamente.');
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('El estudiante no tiene exámenes registrados.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error al calcular la nota final: ' || SQLERRM);
+END;
+/
 
 desc matricula;
 desc pago;
